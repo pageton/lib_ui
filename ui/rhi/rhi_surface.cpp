@@ -31,7 +31,12 @@ struct SurfaceRhiTraits : RpWidgetDefaultTraits {
 };
 
 void ApplyRhiApi(QRhiWidget *widget) {
-	if (WidgetsRhiVulkan()) {
+	// Destroying a Vulkan-backed widget window deadlocks Qt 6.11 under
+	// Wayland: ~QWaylandVulkanWindow never acquires the surface write
+	// lock in QWaylandWindow::reset(). Vulkan is forced only on X11,
+	// elsewhere QRhiWidget's default (OpenGL) applies, falling back to
+	// a raster window when the GL RHI is unavailable.
+	if (WidgetsRhiVulkan() && Platform::IsX11()) {
 		widget->setApi(QRhiWidget::Api::Vulkan);
 		return;
 	}
