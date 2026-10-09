@@ -633,7 +633,7 @@ bool Renderer::drawLine(uint16 lineEnd, Blocks::const_iterator blocksEnd) {
 	}
 
 	auto extendLeft = (startBlock->position() < _lineStart)
-		? qMin(_lineStart - startBlock->position(), 2)
+		? std::min(_lineStart - startBlock->position(), 2)
 		: 0;
 	if (extendLeft
 		&& _t->_text.at(_lineStart - extendLeft).isLowSurrogate()) {
@@ -643,7 +643,7 @@ bool Renderer::drawLine(uint16 lineEnd, Blocks::const_iterator blocksEnd) {
 	auto extendedLineEnd = (endBlock
 		&& endBlock->position() < trimmedLineEnd
 		&& !_elidedLine)
-		? qMin(int(trimmedLineEnd) + 2, int(_t->blockEnd(blocksEnd)))
+		? std::min(int(trimmedLineEnd) + 2, int(_t->blockEnd(blocksEnd)))
 		: int(trimmedLineEnd);
 	if (extendedLineEnd > trimmedLineEnd
 		&& _t->_text.at(extendedLineEnd - 1).isHighSurrogate()) {
@@ -1085,7 +1085,7 @@ bool Renderer::drawLine(uint16 lineEnd, Blocks::const_iterator blocksEnd) {
 
 		const auto &shaped = shaper.shape(index);
 
-		const auto itemStart = qMax(lineStart, item.position);
+		const auto itemStart = std::max(lineStart, item.position);
 		const auto itemEnd = (lineStart + lineLength
 			< item.position + item.length)
 			? (lineStart + lineLength)
@@ -1707,7 +1707,7 @@ void Renderer::prepareElidedLine(
 			_wLeft -= item.width;
 		} else if (_type == TextBlockType::Text) {
 			const auto &shaped = shaper.shape(i);
-			const auto itemStart = qMax(lineStart, item.position);
+			const auto itemStart = std::max(lineStart, item.position);
 			const auto itemEnd = (lineStart + lineLength
 				< item.position + item.length)
 				? (lineStart + lineLength)
@@ -1771,13 +1771,14 @@ void Renderer::prepareElisionAt(
 		uint16 position) {
 	lineText = lineText.mid(0, position - _localFrom) + kQEllipsis;
 	lineLength = position + kQEllipsis.size() - _lineStart;
-	_selection.to = qMin(_selection.to, position);
+	_selection.to = std::min(_selection.to, position);
 	setElideBidi(position);
 }
 
 void Renderer::restoreAfterElided() {
 	if (_elideSavedBlock) {
 		const_cast<String*>(_t)->_blocks[_elideSavedIndex] = std::move(*_elideSavedBlock);
+		_elideSavedBlock.reset();
 	}
 }
 
@@ -1791,9 +1792,7 @@ void Renderer::applyBlockProperties(
 				? false
 				: (underline == st::kLinkUnderlineActive)
 				? ((_palette && _palette->linkAlwaysActive)
-					|| ClickHandler::showAsActive(_t->_extended
-						? _t->_extended->links[index - 1]
-						: nullptr))
+					|| ClickHandler::showAsActive(_t->linkByIndex(index)))
 				: true;
 			return underlined ? _t->_st->font->underline() : _t->_st->font;
 		}
@@ -1817,9 +1816,8 @@ void Renderer::applyBlockProperties(
 		if (isMono
 			&& block->linkIndex()
 			&& (!_background.spoiler || _spoiler->revealed)) {
-			const auto pressed = ClickHandler::showAsPressed(_t->_extended
-				? _t->_extended->links[block->linkIndex() - 1]
-				: nullptr);
+			const auto pressed = ClickHandler::showAsPressed(
+				_t->linkByIndex(block->linkIndex()));
 			_background.selectActiveBlock = pressed;
 		}
 
@@ -1907,9 +1905,7 @@ ClickHandlerPtr Renderer::lookupLink(const AbstractBlock *block) const {
 		}
 		return customEmoji->link;
 	}
-	return _t->_extended
-		? _t->_extended->links[block->linkIndex() - 1]
-		: nullptr;
+	return _t->linkByIndex(block->linkIndex());
 }
 
 } // namespace Ui::Text
